@@ -21,9 +21,9 @@ batch_size = 100
 
 '要进行对比实验的算法'
 labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
-          'Adapid', 'Adapid_test', 'specPID', 'SVRG', 'SARAH']
+          'Adapid', 'Double_Adapid', 'specPID', 'SVRG', 'SARAH']
 '每种算法所对应的学习率'
-learning_rates = [0.2, 0.01, 0.01, 0.1, 0.05, 0.05, 0.2, 0.2, 0.2, 0.01, 0.02, 0.1, 0.05, 0.05]
+learning_rates = [0.2, 0.01, 0.01, 0.1, 0.05, 0.05, 0.2, 0.2, 0.2, 0.01, 0.01, 0.1, 0.05, 0.05]
 
 I = 1
 I = float(I)
@@ -136,7 +136,7 @@ def training(optimizer_sign=0, learning_rate=0.01):
     elif optimizer_sign == 9:
         optimizer = pid.AdapidOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
     elif optimizer_sign == 10:
-        optimizer = pid.AdapidOptimizer_test(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
+        optimizer = pid.Double_Adaptive_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
     elif optimizer_sign == 11:
         optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
         oldnet_sign = True
