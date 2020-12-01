@@ -249,11 +249,11 @@ comparing_data = []
 
 
 
-learning_rates = [0.03, 0.05, 0.1, 0.2, 0.3, 0.5]
+learning_rates = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
 
 
 
-optimizer_sign = 3
+optimizer_sign = 4
 
 for i in range(len(learning_rates)):
     comparing_data.append(training(optimizer_sign=optimizer_sign, learning_rate=learning_rates[i]))
@@ -263,6 +263,7 @@ for data in comparing_data:
 
 labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
           'Adapid', 'Adapid_test', 'specPID', 'SVRG', 'SARAH']
+
 
 
 
