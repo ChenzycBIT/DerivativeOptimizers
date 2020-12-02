@@ -75,9 +75,9 @@ class CNN(nn.Module):
         self.conv1 = torch.nn.Conv2d(1, 32, 3, 1)
         self.conv2 = torch.nn.Conv2d(32, 64, 3, 1)
         self.conv3 = torch.nn.Conv2d(64, 64, 3, 1)
-        self.dense = torch.nn.Linear(576, 64)
+        self.dense = torch.nn.Linear(576, 128)
         self.maxpool = torch.nn.MaxPool2d(2, 2, 0)
-        self.outlayer = torch.nn.Linear(256, num_classes)
+        self.outlayer = torch.nn.Linear(128, num_classes)
 
     def forward(self, x):
         out = self.conv1(x)
@@ -90,7 +90,7 @@ class CNN(nn.Module):
         out = F.relu(out)
         out = out.view((out.size(0), -1))
         out = self.dense(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.outlayer(out)
 
         return out

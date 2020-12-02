@@ -22,9 +22,11 @@ batch_size = 100
 
 '要进行对比实验的算法'
 labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
-          'Adapid', 'Double_Adapid', 'specPID', 'SVRG', 'SARAH', 'Restrict_Adam']
+          'Adapid', 'Double_Adapid', 'specPID', 'Restrict_Adam', 'SVRG', 'SARAH']
 '每种算法所对应的学习率'
-learning_rates = [1, 0.001, 0.002, 0.2, 0.002, 0.002, 0.2, 0.2, 0.2, 0.01, 0.01, 0.1, 0.05, 0.05, 0.002]
+
+
+learning_rates = [1, 0.001, 0.002, 0.2, 0.002, 0.002, 0.2, 1, 0.2, 0.01, 0.01, 0.1, 0.002, 0.05, 0.05]
 
 I = 1
 I = float(I)
@@ -94,7 +96,7 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
     elif optimizer_sign == 6:
         optimizer = pid.Momentumoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
     elif optimizer_sign == 7:
-        optimizer = pid.decade_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I*10, D=D)
+        optimizer = pid.decade_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D/10)
     elif optimizer_sign == 8:
         optimizer = pid.IDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
     elif optimizer_sign == 9:
@@ -102,18 +104,18 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
     elif optimizer_sign == 10:
         optimizer = pid.Double_Adaptive_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=0.0005)
     elif optimizer_sign == 11:
-        optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
-        oldnet_sign = True
+        optimizer = pid.Restrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
     elif optimizer_sign == 12:
+        optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I,D=D)
+        oldnet_sign = True
+    elif optimizer_sign == 13:
         optimizer = pid.SVRGoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
         oldnet_sign = True
         basicgrad_sign = True
-    elif optimizer_sign == 13:
+    elif optimizer_sign == 14:
         optimizer = pid.SARAHoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
         oldnet_sign = True
         basicgrad_sign = True
-    elif optimizer_sign == 14:
-        optimizer = pid.Restrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
     else:
         raise ValueError('Not correct algorithm symbol')
     if oldnet_sign == True:
@@ -215,11 +217,12 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
     training_data['learning_rate'] = learning_rate
     return training_data
 
-model_sign = int(input('please input model sign: \n 1 for Densenet, 2 for CNN, 3 for ResNet18 \nmodel_sign:'))
+model_sign = int(input('please input model sign: \n 0 for Densenet, 1 for CNN, 2 for ResNet18 \nmodel_sign:'))
+models = ['DenseNet', 'CNN', 'ResNet']
 
 comparing_data = []
 
-testing_algorithms =[3, 7]
+testing_algorithms = [i for i in range(13)]
 
 
 for i in testing_algorithms:
@@ -235,7 +238,7 @@ testing_labels = [labels[i] for i in testing_algorithms]
 for i in range(len(comparing_data)):
     plt.plot(range(len(comparing_data[i]['train_acc'])), comparing_data[i]['train_acc'], label=testing_labels[i])
 plt.legend(testing_labels)
-plt.title('DenseNet, MNIST, ' + ',i=' + str(I) + 'd=' + str(D))
+plt.title(models[model_sign] + ', MNIST, ' + ',i=' + str(I) + 'd=' + str(D))
 plt.show()
 
 for data in comparing_data:
