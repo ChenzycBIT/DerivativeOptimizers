@@ -56,36 +56,28 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 class CNN(nn.Module):
     def __init__(self, num_classes):
         super(CNN, self).__init__()
-        self.conv1 = torch.nn.Conv2d(1, 32, 3, 1, 1)
-        self.conv2 = torch.nn.Conv2d(32, 64, 3, 1, 1)
-        self.conv3 = torch.nn.Conv2d(64, 128, 3, 1, 1)
-        self.conv4 = torch.nn.Conv2d(128, 256, 3, 1, 1)
-        self.dense = torch.nn.Linear(256, 256)
+        self.conv1 = torch.nn.Conv2d(1, 32, 3, 1)
+        self.conv2 = torch.nn.Conv2d(32, 64, 3, 1)
+        self.conv3 = torch.nn.Conv2d(64, 64, 3, 1)
+        self.dense = torch.nn.Linear(576, 64)
         self.maxpool = torch.nn.MaxPool2d(2, 2, 0)
-        self.averagepool = torch.nn.AvgPool2d(3)
         self.outlayer = torch.nn.Linear(256, num_classes)
-        self.relu = torch.nn.ReLU()
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.conv2(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.conv3(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.conv4(x)
-        x = self.relu(x)
-        x = self.averagepool(x)
-        x = x.view((x.size(0), -1))
-        x = self.dense(x)
-        x = self.relu(x)
-        out = self.outlayer(x)
+        out = self.conv1(x)
+        out = F.relu(out)
+        out = self.maxpool(out)
+        out = self.conv2(out)
+        out = F.relu(out)
+        out = self.maxpool(out)
+        out = self.conv3(out)
+        out = F.relu(out)
+        out = out.view((out.size(0), -1))
+        out = self.dense(out)
+        out = self.relu(out)
+        out = self.outlayer(out)
 
         return out
-
 
 class Net(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
@@ -101,7 +93,7 @@ class Net(nn.Module):
 
 def training(optimizer_sign=0, learning_rate=0.01):
     training_data = {'train_loss':[], 'val_loss':[], 'train_acc':[], 'val_acc':[]}
-    net = Net(input_size, hidden_size, num_classes)
+    net = CNN(num_classes)
     # net = Net(input_size, hidden_size, num_classes)
     net.cuda()
     net.train()

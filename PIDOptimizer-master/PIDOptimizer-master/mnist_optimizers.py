@@ -9,6 +9,7 @@ import pid
 import os
 import numpy as np
 from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
+from DNN_models import CNN, DenseNet, ResNet18
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
@@ -21,9 +22,9 @@ batch_size = 100
 
 '要进行对比实验的算法'
 labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
-          'Adapid', 'Double_Adapid', 'specPID', 'SVRG', 'SARAH']
+          'Adapid', 'Double_Adapid', 'specPID', 'SVRG', 'SARAH', 'Restrict_Adam']
 '每种算法所对应的学习率'
-learning_rates = [0.2, 0.01, 0.01, 0.1, 0.05, 0.05, 0.2, 0.2, 0.2, 0.01, 0.01, 0.1, 0.05, 0.05]
+learning_rates = [1, 0.001, 0.002, 0.2, 0.002, 0.002, 0.2, 0.2, 0.2, 0.01, 0.01, 0.1, 0.05, 0.05, 0.002]
 
 I = 1
 I = float(I)
@@ -57,56 +58,19 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           shuffle=False)
 
 
-# Neural Network Model (1 hidden layer)
-class CNN(nn.Module):
-    def __init__(self, num_classes):
-        super(CNN, self).__init__()
-        self.conv1 = torch.nn.Conv2d(1, 32, 3, 1, 1)
-        self.conv2 = torch.nn.Conv2d(32, 64, 3, 1, 1)
-        self.conv3 = torch.nn.Conv2d(64, 128, 3, 1, 1)
-        self.conv4 = torch.nn.Conv2d(128, 256, 3, 1, 1)
-        self.dense = torch.nn.Linear(256, 256)
-        self.maxpool = torch.nn.MaxPool2d(2, 2, 0)
-        self.averagepool = torch.nn.AvgPool2d(3)
-        self.outlayer = torch.nn.Linear(256, num_classes)
-        self.relu = torch.nn.ReLU()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.conv2(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.conv3(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.conv4(x)
-        x = self.relu(x)
-        x = self.averagepool(x)
-        x = x.view((x.size(0), -1))
-        x = self.dense(x)
-        x = self.relu(x)
-        out = self.outlayer(x)
-
-        return out
-
-
-class Net(nn.Module):
-    def __init__(self, input_size, hidden_size, num_classes):
-        super(Net, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, num_classes)
-
-    def forward(self, x):
-        out = self.fc1(x)
-        out = F.relu(out)
-        out = self.fc2(out)
-        return out
-
-def training(optimizer_sign=0, learning_rate=0.01):
+def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
     training_data = {'train_loss':[], 'val_loss':[], 'train_acc':[], 'val_acc':[]}
-    net = Net(input_size, hidden_size, num_classes)
+    if model_sign == 0:
+        net = DenseNet(input_size, hidden_size, num_classes)
+        padding_sign = True
+    elif model_sign == 1:
+        net = CNN(num_classes)
+        padding_sign = False
+    elif model_sign == 2:
+        net = ResNet18(num_classes)
+        padding_sign = False
+    else:
+        raise ValueError('Not correct model sign')
     # net = Net(input_size, hidden_size, num_classes)
     net.cuda()
     net.train()
@@ -130,13 +94,13 @@ def training(optimizer_sign=0, learning_rate=0.01):
     elif optimizer_sign == 6:
         optimizer = pid.Momentumoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
     elif optimizer_sign == 7:
-        optimizer = pid.decade_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
+        optimizer = pid.decade_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I*10, D=D)
     elif optimizer_sign == 8:
         optimizer = pid.IDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
     elif optimizer_sign == 9:
         optimizer = pid.AdapidOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
     elif optimizer_sign == 10:
-        optimizer = pid.Double_Adaptive_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
+        optimizer = pid.Double_Adaptive_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=0.0005)
     elif optimizer_sign == 11:
         optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D)
         oldnet_sign = True
@@ -144,11 +108,14 @@ def training(optimizer_sign=0, learning_rate=0.01):
         optimizer = pid.SVRGoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
         oldnet_sign = True
         basicgrad_sign = True
-    else:
+    elif optimizer_sign == 13:
         optimizer = pid.SARAHoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
         oldnet_sign = True
         basicgrad_sign = True
-
+    elif optimizer_sign == 14:
+        optimizer = pid.Restrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
+    else:
+        raise ValueError('Not correct algorithm symbol')
     if oldnet_sign == True:
         torch.save(net, 'net.pkl')
         old_net = torch.load('net.pkl')
@@ -163,7 +130,9 @@ def training(optimizer_sign=0, learning_rate=0.01):
         for i, (images, labels) in enumerate(train_loader):
             if i % 100 == 0 and basicgrad_sign == True:
                 for j, (all_images, all_labels) in enumerate(BGD_loader):
-                    all_images = all_images.view(-1, 28 * 28).cuda()
+                    all_images = all_images.cuda()
+                    if padding_sign == True:
+                        all_images = all_images.view(-1, 28 * 28)
                     all_labels = Variable(all_labels.cuda())
                     optimizer.zero_grad()  # zero the gradient buffer
                     outputs = net(all_images)
@@ -184,7 +153,9 @@ def training(optimizer_sign=0, learning_rate=0.01):
                           % (epoch + 1, num_epochs, i + 1, len(train_dataset) // batch_size, train_loss_log.avg,
                              train_acc_log.avg))
             # Convert torch tensor to Variable
-            images = images.view(-1, 28*28).cuda()
+            images = images.cuda()
+            if padding_sign == True:
+                images = images.view(-1, 28 * 28)
             labels = Variable(labels.cuda())
 
             # Forward + Backward + Optimize
@@ -223,7 +194,9 @@ def training(optimizer_sign=0, learning_rate=0.01):
         loss = 0
         total = 0
         for images, labels in test_loader:
-            images = images.view(-1, 28*28).cuda()
+            images = images.cuda()
+            if padding_sign == True:
+                images = images.view(-1, 28 * 28)
             labels = Variable(labels).cuda()
             outputs = net(images)
             test_loss = criterion(outputs, labels)
@@ -242,19 +215,26 @@ def training(optimizer_sign=0, learning_rate=0.01):
     training_data['learning_rate'] = learning_rate
     return training_data
 
+model_sign = int(input('please input model sign: \n 1 for Densenet, 2 for CNN, 3 for ResNet18 \nmodel_sign:'))
+
 comparing_data = []
-for i in range(14):
-    comparing_data.append(training(optimizer_sign=i, learning_rate=learning_rates[i]))
+
+testing_algorithms =[3, 7]
+
+
+for i in testing_algorithms:
+    comparing_data.append(training(model_sign=model_sign, optimizer_sign=i, learning_rate=learning_rates[i]))
 
 for data in comparing_data:
     for key, values in data.items():
         values = np.array(values)
 
+for i in range(len(testing_algorithms)):
+    labels[testing_algorithms[i]] = labels[testing_algorithms[i]] + ' learning_rate = ' + str(comparing_data[i]['learning_rate'])
+testing_labels = [labels[i] for i in testing_algorithms]
 for i in range(len(comparing_data)):
-    labels[i] = labels[i] + ' learning_rate = ' + str(comparing_data[i]['learning_rate'])
-for i in range(len(comparing_data)):
-    plt.plot(range(len(comparing_data[i]['train_acc'])), comparing_data[i]['train_acc'], label=labels[i])
-plt.legend(labels)
+    plt.plot(range(len(comparing_data[i]['train_acc'])), comparing_data[i]['train_acc'], label=testing_labels[i])
+plt.legend(testing_labels)
 plt.title('DenseNet, MNIST, ' + ',i=' + str(I) + 'd=' + str(D))
 plt.show()
 
