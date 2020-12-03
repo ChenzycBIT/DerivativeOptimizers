@@ -10,65 +10,93 @@ import pid
 import os
 import numpy as np
 from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
-from DNN_models import CNN, DenseNet, ResNet18
+from DNN_models import cifar10_CNN, cifar10_DenseNet, cifar10_ResNet18
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 # Hyper Parameters
+input_size = 784
+hidden_size = 1000
 num_classes = 10
 num_epochs = 5
 batch_size = 100
 
 '要进行对比实验的算法'
-labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
+algorithm_labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
           'Adapid', 'Double_Adapid', 'Restrict_Adam', 'Logristrict_Adam', 'specPID', 'SVRG', 'SARAH']
 '每种算法所对应的学习率'
 
 
-learning_rates = [1, 0.002, 0.002, 0.2, 0.001, 0.002, 0.2, 1, 0.2, 0.001, 0.001, 0.0002, 0.002, 0.1, 0.05, 0.05]
+learning_rates = [1, 0.001, 0.001, 0.2, 0.001, 0.001, 0.2, 1, 0.2, 0.001, 0.001, 0.001, 0.001, 0.1, 0.05, 0.05]
 
 I = 3
 I = float(I)
 D = 30
 D = float(D)
 
-#logger = Logger('pid.txt', title='mnist')
-#logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
+dataset_path = input('please input CIFAR10 path, nothing for default value \n')
+if dataset_path == '':
+    dataset_path = 'E:\\files\\programs\\Gitkraken\\cifar-10-batches-py\\'
+for i in range(1,6):
+    path = dataset_path + 'data_batch_' + str(i)
+    with open(path, 'rb') as batch:
+        dict = pickle.load(batch, encoding='bytes')
+    if i == 1:
+        images = dict[b'data']
+        image_labels = dict[b'labels']
+    else:
+        images = np.concatenate([images, dict[b'data']], axis=0)
+        image_labels = np.concatenate([image_labels, dict[b'labels']], axis=0)
+path = dataset_path + 'test_batch'
+with open(path, 'rb') as batch:
+    dict = pickle.load(batch, encoding='bytes')
+test_images = np.array(dict[b'data'])
+test_image_labels = np.array(dict[b'labels'])
+images = np.array(images)
+image_labels = np.array(image_labels)
+images = np.reshape(images, [-1, 3, 32, 32])
+test_images = np.reshape(test_images, [-1, 3, 32, 32])
+print(len(images))
 
-# MNIST Dataset
-train_dataset = dsets.MNIST(root='./data',
-                            train=True,
-                            transform=transforms.ToTensor(),
-                            download=True)
+class cifar10_dataset(torch.utils.data.Dataset):
+    def __init__(self):
+        self.images = images
+        self.labels = image_labels
+        super(cifar10_dataset, self).__init__()
+    def __getitem__(self, index):
+        data = self.images[index]
+        label = self.labels[index]
+        return data, label
+    def __len__(self):
+        return len(self.images)
 
-test_dataset = dsets.MNIST(root='./data',
-                           train=False,
-                           transform=transforms.ToTensor())
+class cifar10_test_dataset(torch.utils.data.Dataset):
+    def __init__(self):
+        self.images = test_images
+        self.labels = test_image_labels
+        super(cifar10_test_dataset, self).__init__()
+    def __getitem__(self, index):
+        data = self.images[index]
+        label = self.labels[index]
+        return data, label
+    def __len__(self):
+        return len(self.images)
 
-# Data Loader (Input Pipeline)
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                           batch_size=batch_size,
-                                           shuffle=True)
-
-BGD_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                           batch_size=len(train_dataset),
-                                           shuffle=True)
-
-test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
-                                          batch_size=batch_size,
-                                          shuffle=False)
+train_loader = torch.utils.data.DataLoader(dataset=cifar10_dataset(), batch_size=batch_size, shuffle=True)
+test_loader = torch.utils.data.DataLoader(dataset=cifar10_test_dataset(), batch_size=batch_size, shuffle=True)
+BGD_loader = torch.utils.data.DataLoader(dataset=cifar10_dataset(),batch_size=len(images),shuffle=True)
 
 
 def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
     training_data = {'train_loss':[], 'val_loss':[], 'train_acc':[], 'val_acc':[]}
     if model_sign == 0:
-        net = DenseNet(num_classes)
+        net = cifar10_DenseNet(num_classes)
         padding_sign = True
     elif model_sign == 1:
-        net = CNN(num_classes)
+        net = cifar10_CNN(num_classes)
         padding_sign = False
     elif model_sign == 2:
-        net = ResNet18(num_classes)
+        net = cifar10_ResNet18(num_classes)
         padding_sign = False
     else:
         raise ValueError('Not correct model sign')
@@ -106,14 +134,14 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
         optimizer = pid.Restrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
     elif optimizer_sign == 12:
         optimizer = pid.Logrestrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
-    elif optimizer_sign == 12:
+    elif optimizer_sign == 13:
         optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I,D=D)
         oldnet_sign = True
-    elif optimizer_sign == 13:
+    elif optimizer_sign == 14:
         optimizer = pid.SVRGoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
         oldnet_sign = True
         basicgrad_sign = True
-    elif optimizer_sign == 14:
+    elif optimizer_sign == 15:
         optimizer = pid.SARAHoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
         oldnet_sign = True
         basicgrad_sign = True
@@ -133,10 +161,10 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
         for i, (images, labels) in enumerate(train_loader):
             if i % 100 == 0 and basicgrad_sign == True:
                 for j, (all_images, all_labels) in enumerate(BGD_loader):
-                    all_images = all_images.cuda()
+                    all_images = all_images.cuda().float()
                     if padding_sign == True:
-                        all_images = all_images.view(-1, 28 * 28)
-                    all_labels = Variable(all_labels.cuda())
+                        all_images = all_images.view(-1, 3072)
+                    all_labels = Variable(all_labels.cuda()).long()
                     optimizer.zero_grad()  # zero the gradient buffer
                     outputs = net(all_images)
                     train_loss = criterion(outputs, all_labels)
@@ -153,13 +181,13 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
                     torch.save(net, 'net.pkl')
                     old_net = torch.load('net.pkl')
                     print('Epoch [%d/%d], Step [%d/%d], Loss: %.4f, Acc: %.8f'
-                          % (epoch + 1, num_epochs, i + 1, len(train_dataset) // batch_size, train_loss_log.avg,
+                          % (epoch + 1, num_epochs, i + 1, len(images) // batch_size, train_loss_log.avg,
                              train_acc_log.avg))
             # Convert torch tensor to Variable
-            images = images.cuda()
+            images = images.cuda().float()
             if padding_sign == True:
-                images = images.view(-1, 28 * 28)
-            labels = Variable(labels.cuda())
+                images = images.view(-1, 3072)
+            labels = Variable(labels.cuda()).long()
 
             # Forward + Backward + Optimize
             optimizer.zero_grad()  # zero the gradient buffer
@@ -185,7 +213,7 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
 
             if (i + 1) % 30 == 0:
                 print('Epoch [%d/%d], Step [%d/%d], Loss: %.4f, Acc: %.8f'
-                      % (epoch + 1, num_epochs, i + 1, len(train_dataset) // batch_size, train_loss_log.avg,
+                      % (epoch + 1, num_epochs, i + 1, len(images) // batch_size, train_loss_log.avg,
                          train_acc_log.avg))
                 training_data['train_loss'].append(train_loss_log.avg.detach().cpu().numpy())
                 training_data['train_acc'].append(train_acc_log.avg.detach().cpu().numpy())
@@ -196,10 +224,10 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
         loss = 0
         total = 0
         for images, labels in test_loader:
-            images = images.cuda()
+            images = images.cuda().float()
             if padding_sign == True:
-                images = images.view(-1, 28 * 28)
-            labels = Variable(labels).cuda()
+                images = images.view(-1, 3072)
+            labels = Variable(labels).cuda().long()
             outputs = net(images)
             test_loss = criterion(outputs, labels)
             val_loss_log.update(test_loss.data, images.size(0))
@@ -224,7 +252,7 @@ models = ['DenseNet', 'CNN', 'ResNet']
 
 comparing_data = []
 
-testing_algorithms = [2, 4, 9, 10]
+testing_algorithms = [2, 4, 11, 12]
 
 
 for i in testing_algorithms:
@@ -235,13 +263,13 @@ for data in comparing_data:
         values = np.array(values)
 
 for i in range(len(testing_algorithms)):
-    labels[testing_algorithms[i]] = labels[testing_algorithms[i]] + ' learning_rate = ' + str(comparing_data[i]['learning_rate'])
-testing_labels = [labels[i] for i in testing_algorithms]
+    algorithm_labels[testing_algorithms[i]] = algorithm_labels[testing_algorithms[i]] + ' learning_rate = ' + str(comparing_data[i]['learning_rate'])
+testing_labels = [algorithm_labels[i] for i in testing_algorithms]
 for i in range(len(comparing_data)):
     plt.plot(range(len(comparing_data[i]['train_acc'])), comparing_data[i]['train_acc'], label=testing_labels[i])
 plt.legend(testing_labels)
 
-plt.title(models[model_sign] +  ' MNIST, ' + ' i=' + str(I) + 'd=' + str(D))
+plt.title(models[model_sign] +  ' CIFAR10, ' + ' i=' + str(I) + 'd=' + str(D))
 
 plt.show()
 
