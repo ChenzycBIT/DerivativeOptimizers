@@ -87,7 +87,7 @@ test_loader = torch.utils.data.DataLoader(dataset=cifar10_test_dataset(), batch_
 BGD_loader = torch.utils.data.DataLoader(dataset=cifar10_dataset(),batch_size=len(images),shuffle=True)
 
 
-def training(model_sign=0, optimizer_sign=0, learning_rate=0.01, derivative=0):
+def training(model_sign=0, optimizer_sign=0, learning_rate=0.001, derivative=30):
     training_data = {'train_loss':[], 'val_loss':[], 'train_acc':[], 'val_acc':[]}
     if model_sign == 0:
         net = cifar10_DenseNet(num_classes)
@@ -250,7 +250,6 @@ models = ['DenseNet', 'CNN', 'ResNet']
 
 
 comparing_data = []
-
 learning_rates = [0.0005, 0.001, 0.002, 0.003, 0.005, 0.01]
 derivatives = [-50, -10, -1, -0.1, 0.1, 1, 10, 50]
 
@@ -259,15 +258,16 @@ derivative_sign = True
 
 if derivative_sign == True:
     for i in range(len(derivatives)):
-        comparing_data.append(training(model_sign=model_sign, optimizer_sign=optimizer_sign,
-                                       learning_rate=learning_rates[0], derivative = derivatives[i]))
+        for j in range(5):
+            if j == 0:
+                acc_data = np.array(training(model_sign=model_sign, optimizer_sign=optimizer_sign, derivative = derivatives[i])['train_acc'])
+            else:
+                acc_data += np.array(training(model_sign=model_sign, optimizer_sign=optimizer_sign, derivative = derivatives[i])['train_acc'])
+        comparing_data.append(acc_data/5)
 else:
     for i in range(len(learning_rates)):
         comparing_data.append(
             training(model_sign=model_sign, optimizer_sign=optimizer_sign, learning_rate=learning_rates[i]))
-for data in comparing_data:
-    for key, values in data.items():
-        values = np.array(values)
 
 labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
           'Adapid', 'Double_Adapid', 'specPID', 'Restrict_Adam', 'SVRG', 'SARAH']
@@ -286,17 +286,9 @@ for i in range(len(derivatives)):
 
 
 for i in range(len(comparing_data)):
-    plt.plot(range(len(comparing_data[i]['train_acc'])), comparing_data[i]['train_acc'], label=labels[i])
+    plt.plot(range(len(comparing_data[i])), comparing_data[i], label=labels[i])
 plt.legend(lrlabels)
-plt.title(models[model_sign] + ' CIFAR10 ')# + ' ,i=' + str(I) + 'd=' + str(D))
+plt.title(models[model_sign] + ' CIFAR10 ')
 plt.show()
 
-for data in comparing_data:
-    plt.plot(range(len(data['train_loss'])), data['train_loss'])
-
-for data in comparing_data:
-    plt.plot(range(len(data['val_acc'])), data['val_acc'])
-
-for data in comparing_data:
-    plt.plot(range(len(data['val_loss'])), data['val_loss'])
-
+a = 0
