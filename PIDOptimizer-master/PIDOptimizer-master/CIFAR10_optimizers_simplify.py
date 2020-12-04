@@ -35,7 +35,7 @@ D = float(D)
 
 dataset_path = input('please input CIFAR10 path, nothing for default value \n')
 if dataset_path == '':
-    dataset_path = 'E:\\files\\programs\\Gitkraken\\cifar-10-batches-py\\'
+    dataset_path = 'E:\\cifar-10-batches-py\\'
 for i in range(1,6):
     path = dataset_path + 'data_batch_' + str(i)
     with open(path, 'rb') as batch:

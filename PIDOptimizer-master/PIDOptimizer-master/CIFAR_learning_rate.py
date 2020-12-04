@@ -1,3 +1,9 @@
+import os
+GPU_specify = input ('Please choose a GPU, none for GPU0: \n')
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = GPU_specify
+
+
 import torch
 import torch.nn as nn
 import torchvision.datasets as dsets
@@ -36,7 +42,7 @@ D = float(D)
 
 dataset_path = input('please input CIFAR10 path, nothing for default value \n')
 if dataset_path == '':
-    dataset_path = 'E:\\files\\programs\\Gitkraken\\cifar-10-batches-py\\'
+    dataset_path = 'E:\\cifar-10-batches-py\\'
 for i in range(1,6):
     path = dataset_path + 'data_batch_' + str(i)
     with open(path, 'rb') as batch:
@@ -251,19 +257,19 @@ models = ['DenseNet', 'CNN', 'ResNet']
 
 comparing_data = []
 learning_rates = [0.0005, 0.001, 0.002, 0.003, 0.005, 0.01]
-derivatives = [-50, -10, -1, -0.1, 0.1, 1, 10, 50]
+derivatives = [-50, -10, -1, -0.1, 0.1, 1, 10, 50]  
 
 optimizer_sign = 10
 derivative_sign = True
 
 if derivative_sign == True:
     for i in range(len(derivatives)):
-        for j in range(5):
+        for j in range(20):
             if j == 0:
                 acc_data = np.array(training(model_sign=model_sign, optimizer_sign=optimizer_sign, derivative = derivatives[i])['train_acc'])
             else:
                 acc_data += np.array(training(model_sign=model_sign, optimizer_sign=optimizer_sign, derivative = derivatives[i])['train_acc'])
-        comparing_data.append(acc_data/5)
+        comparing_data.append(acc_data/20)
 else:
     for i in range(len(learning_rates)):
         comparing_data.append(
