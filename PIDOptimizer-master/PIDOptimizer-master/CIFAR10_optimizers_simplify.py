@@ -22,12 +22,11 @@ num_epochs = 5
 batch_size = 100
 
 '要进行对比实验的算法'
-algorithm_labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
-          'Adapid', 'Double_Adapid', 'Restrict_Adam', 'Logristrict_Adam', 'specPID', 'SVRG', 'SARAH']
+algorithm_labels = ['Adam_self','Momentum', 'decade_PID', 'Adapid', 'Double_Adapid', 'Restrict_Adam', 'specPID']
 '每种算法所对应的学习率'
 
 
-learning_rates = [1, 0.001, 0.001, 0.2, 0.001, 0.001, 0.2, 1, 0.2, 0.001, 0.001, 0.001, 0.001, 0.1, 0.05, 0.05]
+learning_rates = [0.001, 0.2, 0.2, 0.001, 0.001, 0.001, 0.2]
 
 I = 3
 I = float(I)
@@ -87,7 +86,7 @@ test_loader = torch.utils.data.DataLoader(dataset=cifar10_test_dataset(), batch_
 BGD_loader = torch.utils.data.DataLoader(dataset=cifar10_dataset(),batch_size=len(images),shuffle=True)
 
 
-def training(model_sign=0, optimizer_sign=0, learning_rate=0.001, derivative=30):
+def training(model_sign=0, optimizer_sign=0, learning_rate=0.01):
     training_data = {'train_loss':[], 'val_loss':[], 'train_acc':[], 'val_acc':[]}
     if model_sign == 0:
         net = cifar10_DenseNet(num_classes)
@@ -108,43 +107,22 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.001, derivative=30)
     basicgrad_sign = False
     criterion = nn.CrossEntropyLoss()
     print('optimizer_sign:' + str(optimizer_sign))
+    algorithm_labels = ['Adam_self', 'Momentum', 'decade_PID', 'Adapid', 'Double_Adapid', 'Restrict_Adam', 'specPID']
     if optimizer_sign == 0:
-        optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate)
-    elif optimizer_sign == 1:
-        optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate)
-    elif optimizer_sign == 2:
-        optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
-    elif optimizer_sign == 3:
-        optimizer = pid.PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=derivative)
-    elif optimizer_sign == 4:
         optimizer = pid.Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
-    elif optimizer_sign == 5:
-        optimizer = pid.RMSpropOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
-    elif optimizer_sign == 6:
+    elif optimizer_sign == 1:
         optimizer = pid.Momentumoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
-    elif optimizer_sign == 7:
-        optimizer = pid.decade_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=derivative)
-    elif optimizer_sign == 8:
-        optimizer = pid.IDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=derivative)
-    elif optimizer_sign == 9:
-        optimizer = pid.AdapidOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=derivative)
-    elif optimizer_sign == 10:
-        optimizer = pid.Double_Adaptive_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=derivative)
-    elif optimizer_sign == 11:
+    elif optimizer_sign == 2:
+        optimizer = pid.decade_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=D/10)
+    elif optimizer_sign == 3:
+        optimizer = pid.AdapidOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=0.5)
+    elif optimizer_sign == 4:
+        optimizer = pid.Double_Adaptive_PIDOptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I, D=0.5)
+    elif optimizer_sign == 5:
         optimizer = pid.Restrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
-    elif optimizer_sign == 12:
-        optimizer = pid.Logrestrict_Adamoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9)
-    elif optimizer_sign == 13:
-        optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I,D=derivative)
+    elif optimizer_sign == 6:
+        optimizer = pid.specPIDoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001, momentum=0.9, I=I,D=D)
         oldnet_sign = True
-    elif optimizer_sign == 14:
-        optimizer = pid.SVRGoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
-        oldnet_sign = True
-        basicgrad_sign = True
-    elif optimizer_sign == 15:
-        optimizer = pid.SARAHoptimizer(net.parameters(), lr=learning_rate, weight_decay=0.0001)
-        oldnet_sign = True
-        basicgrad_sign = True
     else:
         raise ValueError('Not correct algorithm symbol')
     if oldnet_sign == True:
@@ -246,50 +224,39 @@ def training(model_sign=0, optimizer_sign=0, learning_rate=0.001, derivative=30)
 
 model_sign = int(input('please input model sign: \n 0 for Densenet, 1 for CNN, 2 for ResNet18 \nmodel_sign:'))
 
+
 models = ['DenseNet', 'CNN', 'ResNet']
 
 
 comparing_data = []
-learning_rates = [0.0005, 0.001, 0.002, 0.003, 0.005, 0.01]
-derivatives = [-50, -10, -1, -0.1, 0.1, 1, 10, 50]
 
-optimizer_sign = 10
-derivative_sign = True
-
-if derivative_sign == True:
-    for i in range(len(derivatives)):
-        for j in range(5):
-            if j == 0:
-                acc_data = np.array(training(model_sign=model_sign, optimizer_sign=optimizer_sign, derivative = derivatives[i])['train_acc'])
-            else:
-                acc_data += np.array(training(model_sign=model_sign, optimizer_sign=optimizer_sign, derivative = derivatives[i])['train_acc'])
-        comparing_data.append(acc_data/5)
-else:
-    for i in range(len(learning_rates)):
-        comparing_data.append(
-            training(model_sign=model_sign, optimizer_sign=optimizer_sign, learning_rate=learning_rates[i]))
-
-labels = ['SGD', 'RMSprop', 'Adam', 'PID', 'Adam_self', 'RMSprop_self', 'Momentum', 'decade_PID', 'ID',
-          'Adapid', 'Double_Adapid', 'specPID', 'Restrict_Adam', 'SVRG', 'SARAH']
+testing_algorithms = [0, 1, 2, 3, 4, 5, 6]
 
 
+for i in testing_algorithms:
+    comparing_data.append(training(model_sign=model_sign, optimizer_sign=i, learning_rate=learning_rates[i]))
 
+for data in comparing_data:
+    for key, values in data.items():
+        values = np.array(values)
 
-
-lrlabels = []
-for i in range(len(derivatives)):
-    if derivative_sign == False:
-        lrlabels.append(labels[optimizer_sign] + ' lr=' + str(learning_rates[i]))
-    else:
-        lrlabels.append(labels[optimizer_sign] + ' d=' + str(derivatives[i]))
-
-
-
+for i in range(len(testing_algorithms)):
+    algorithm_labels[testing_algorithms[i]] = algorithm_labels[testing_algorithms[i]] + ' learning_rate = ' + str(comparing_data[i]['learning_rate'])
+testing_labels = [algorithm_labels[i] for i in testing_algorithms]
 for i in range(len(comparing_data)):
-    plt.plot(range(len(comparing_data[i])), comparing_data[i], label=labels[i])
-plt.legend(lrlabels)
-plt.title(models[model_sign] + ' CIFAR10 ')
+    plt.plot(range(len(comparing_data[i]['train_acc'])), comparing_data[i]['train_acc'], label=testing_labels[i])
+plt.legend(testing_labels)
+
+plt.title(models[model_sign] +  ' CIFAR10, ' + ' i=' + str(I) + 'd=' + str(D))
+
 plt.show()
 
-a = 0
-#038880989079
+for data in comparing_data:
+    plt.plot(range(len(data['train_loss'])), data['train_loss'])
+
+for data in comparing_data:
+    plt.plot(range(len(data['val_acc'])), data['val_acc'])
+
+for data in comparing_data:
+    plt.plot(range(len(data['val_loss'])), data['val_loss'])
+
